@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, X, SlidersHorizontal, UserPlus, Eye, Pencil, Trash2,
-  ChevronLeft, ChevronRight, Users, TrendingUp, CalendarCheck,
+  ChevronLeft, ChevronRight, Users, CalendarCheck,
   Handshake, BadgeCheck, AlertTriangle, InboxIcon,
-  Phone, Mail, MapPin, ChevronDown,
+  Phone, Mail, MapPin, ChevronDown, ChevronUp, Filter,
+  Calendar, Briefcase, Flag, DollarSign, Sparkles, Home
 } from 'lucide-react';
 import {
-  MOCK_LEADS, STATUS_OPTIONS, SOURCE_OPTIONS, BUDGET_OPTIONS,
+  MOCK_LEADS,
   formatBudget, formatDate,
 } from '../data/mockLeads';
 
@@ -38,26 +39,7 @@ const SourceBadge = ({ source }) => (
 );
 
 // ─── Select Dropdown ────────────────────────────────────────────────────────
-const FilterSelect = ({ id, label, value, onChange, options }) => (
-  <div className="relative">
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label={label}
-      className="appearance-none h-9 pl-3 pr-8 rounded-lg bg-[#1E1E21] border border-[#2A2A2D]
-        text-sm text-[#F5F5F5] focus:outline-none focus:border-[#C6FF00]/60 focus:ring-2 focus:ring-[#C6FF00]/10
-        hover:border-[#3A3A3D] transition-colors duration-150 cursor-pointer"
-    >
-      {options.map((opt) => (
-        <option key={typeof opt === 'string' ? opt : opt.label} value={typeof opt === 'string' ? opt : opt.label}>
-          {typeof opt === 'string' ? opt : opt.label}
-        </option>
-      ))}
-    </select>
-    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5A5A5D] pointer-events-none" />
-  </div>
-);
+
 
 // ─── Delete Confirmation Modal ─────────────────────────────────────────────
 const DeleteModal = ({ lead, onCancel, onConfirm }) => {
@@ -179,20 +161,31 @@ const LeadCard = ({ lead, onView, onEdit, onDelete }) => (
 );
 
 // ─── Empty State ────────────────────────────────────────────────────────────
-const EmptyState = ({ onAdd }) => (
-  <div className="flex flex-col items-center justify-center py-20 text-center">
-    <div className="w-16 h-16 rounded-2xl bg-[#1E1E21] border border-[#2A2A2D] flex items-center justify-center mb-4">
-      <InboxIcon size={28} className="text-[#3A3A3D]" />
+const EmptyState = ({ onAdd, onClear, hasActiveFilters }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-fadeIn">
+    <div className="w-14 h-14 rounded-2xl bg-[#1E1E21] border border-[#2A2A2D] flex items-center justify-center mb-4 shadow-inner">
+      <InboxIcon size={24} className="text-[#5A5A5D]" />
     </div>
-    <h3 className="text-[#F5F5F5] font-semibold text-base mb-1">No leads found</h3>
-    <p className="text-[#5A5A5D] text-sm mb-6">Try adjusting your search or filters.</p>
-    <button
-      onClick={onAdd}
-      className="flex items-center gap-2 h-9 px-4 rounded-lg bg-[#C6FF00] text-[#0B0B0D] font-semibold text-sm
-        hover:bg-[#D7FF4A] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#C6FF00]"
-    >
-      <UserPlus size={15} /> Add Lead
-    </button>
+    <h3 className="text-[#F5F5F5] font-bold text-base mb-1">No leads found</h3>
+    <p className="text-[#5A5A5D] text-xs max-w-sm mb-6 leading-relaxed">
+      Try adjusting your search criteria or clearing some filters.
+    </p>
+    <div className="flex flex-col sm:flex-row items-center gap-3">
+      {hasActiveFilters && (
+        <button
+          onClick={onClear}
+          className="w-full sm:w-auto h-9 px-4 rounded-lg border border-[#2A2A2D] text-[#A0A0A0] hover:text-[#F5F5F5] hover:bg-[#1E1E21] text-xs font-semibold transition-all duration-150 focus:outline-none"
+        >
+          Clear Filters
+        </button>
+      )}
+      <button
+        onClick={onAdd}
+        className="w-full sm:w-auto flex items-center justify-center gap-2 h-9 px-4 rounded-lg bg-[#C6FF00] text-[#0B0B0D] hover:bg-[#D7FF4A] text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#C6FF00]"
+      >
+        <UserPlus size={14} /> Add New Lead
+      </button>
+    </div>
   </div>
 );
 
@@ -212,54 +205,278 @@ const SummaryCard = ({ icon: Icon, label, value, color }) => (
 );
 
 // ─── Leads Page ─────────────────────────────────────────────────────────────
+// ─── Filter & Search Constants ───────────────────────────────────────────────
+const STATUS_OPTIONS_DISPLAY = [
+  'All Statuses',
+  'New',
+  'Contacted',
+  'Site Visit Scheduled',
+  'Negotiating',
+  'Closed Deal',
+  'Not Interested'
+];
+
+const SOURCE_OPTIONS_DISPLAY = [
+  'All Sources',
+  'Website',
+  'Referral',
+  'Facebook',
+  'Instagram',
+  'Google Ads',
+  'Walk-in',
+  'Other'
+];
+
+const PRIORITY_OPTIONS_DISPLAY = [
+  'All Priorities',
+  'High',
+  'Medium',
+  'Low'
+];
+
+const BUDGET_OPTIONS_DETAILED = [
+  { label: 'All Budgets', min: 0, max: Infinity },
+  { label: 'Under ₹10,00,000', min: 0, max: 1000000 },
+  { label: '₹10,00,000 – ₹50,00,000', min: 1000000, max: 5000000 },
+  { label: '₹50,00,000 – ₹1,00,00,000', min: 5000000, max: 10000000 },
+  { label: 'Above ₹1,00,00,000', min: 10000000, max: Infinity }
+];
+
+const PROPERTY_TYPE_OPTIONS = [
+  'All Types',
+  '1 BHK Apartment',
+  '2 BHK Apartment',
+  '3 BHK Apartment',
+  'Villa',
+  'Independent House',
+  'Commercial Space',
+  'Plot/Land'
+];
+
+const FOLLOW_UP_DATE_OPTIONS = [
+  'All Dates',
+  'Today',
+  'Tomorrow',
+  'This Week',
+  'Overdue'
+];
+
+const CREATED_DATE_OPTIONS = [
+  'All Time',
+  'Last 7 Days',
+  'Last 30 Days',
+  'Last 90 Days'
+];
+
+// ─── Dropdown Component ──────────────────────────────────────────────────────
+const PremiumFilterSelect = ({ id, label, value, onChange, options, icon: Icon }) => (
+  <div className="relative min-w-[145px] flex-1">
+    <div className="relative">
+      {Icon && (
+        <Icon size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A5D] pointer-events-none" />
+      )}
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className={`appearance-none w-full h-9 ${Icon ? 'pl-9' : 'pl-3'} pr-8 rounded-lg bg-[#1E1E21] border border-[#2A2A2D]
+          text-[11px] text-[#F5F5F5] font-semibold outline-none transition-all duration-150 cursor-pointer
+          focus:border-[#C6FF00]/60 focus:ring-2 focus:ring-[#C6FF00]/10 hover:border-[#3A3A3D]`}
+      >
+        {options.map((opt) => (
+          <option key={opt} value={opt} className="bg-[#151517] text-[#F5F5F5]">
+            {opt}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5A5A5D] pointer-events-none" />
+    </div>
+  </div>
+);
+
+// ─── Leads Page ─────────────────────────────────────────────────────────────
 const Leads = () => {
   const navigate = useNavigate();
 
   // State
   const [leads, setLeads] = useState(MOCK_LEADS);
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [sourceFilter, setSourceFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [sourceFilter, setSourceFilter] = useState('All Sources');
+  const [priorityFilter, setPriorityFilter] = useState('All Priorities');
+
+  // Advanced Filters
   const [budgetFilter, setBudgetFilter] = useState('All Budgets');
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState('All Types');
+  const [followUpDateFilter, setFollowUpDateFilter] = useState('All Dates');
+  const [createdDateFilter, setCreatedDateFilter] = useState('All Time');
+
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState(null); // lead to delete
-  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // 300ms Debounce effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   // Derived: filtered leads
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    const budgetRange = BUDGET_OPTIONS.find(b => b.label === budgetFilter) ?? BUDGET_OPTIONS[0];
+    const q = search.toLowerCase().trim();
+    const budgetRange = BUDGET_OPTIONS_DETAILED.find(b => b.label === budgetFilter) ?? BUDGET_OPTIONS_DETAILED[0];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const oneWeekFromNow = new Date(today);
+    oneWeekFromNow.setDate(today.getDate() + 7);
 
     return leads.filter((l) => {
+      // 1. Search Query
       const matchSearch =
         !q ||
         l.name.toLowerCase().includes(q) ||
         l.email.toLowerCase().includes(q) ||
-        l.phone.toLowerCase().includes(q);
+        l.phone.toLowerCase().includes(q) ||
+        (l.property && l.property.toLowerCase().includes(q));
 
-      const matchStatus = statusFilter === 'All' || l.status === statusFilter;
-      const matchSource = sourceFilter === 'All' || l.source === sourceFilter;
+      // 2. Quick Filters
+      const matchStatus = statusFilter === 'All Statuses' || l.status === statusFilter;
+      const matchSource = sourceFilter === 'All Sources' || l.source === sourceFilter;
+      
+      const leadPriority = l.priority || (l.id % 3 === 0 ? 'High' : l.id % 3 === 1 ? 'Medium' : 'Low');
+      const matchPriority = priorityFilter === 'All Priorities' || leadPriority === priorityFilter;
+
+      // 3. Advanced Filters
       const matchBudget = l.budget >= budgetRange.min && l.budget <= budgetRange.max;
+      const matchPropertyType = propertyTypeFilter === 'All Types' || l.property === propertyTypeFilter;
 
-      return matchSearch && matchStatus && matchSource && matchBudget;
+      // Follow-Up Date
+      let matchFollowUp = true;
+      if (followUpDateFilter !== 'All Dates') {
+        if (!l.followUp) {
+          matchFollowUp = false;
+        } else {
+          const fDate = new Date(l.followUp);
+          fDate.setHours(0, 0, 0, 0);
+          const fDateStr = l.followUp.split('T')[0];
+
+          if (followUpDateFilter === 'Today') {
+            matchFollowUp = fDateStr === todayStr;
+          } else if (followUpDateFilter === 'Tomorrow') {
+            matchFollowUp = fDateStr === tomorrowStr;
+          } else if (followUpDateFilter === 'This Week') {
+            matchFollowUp = fDate >= today && fDate <= oneWeekFromNow;
+          } else if (followUpDateFilter === 'Overdue') {
+            matchFollowUp = fDate < today && l.status !== 'Closed Deal' && l.status !== 'Not Interested';
+          }
+        }
+      }
+
+      // Created Date
+      let matchCreated = true;
+      if (createdDateFilter !== 'All Time') {
+        const createdDay = 10 + (l.id % 15);
+        const createdAtStr = l.createdAt || `2026-05-${String(createdDay).padStart(2, '0')}`;
+        const cDate = new Date(createdAtStr);
+        cDate.setHours(0, 0, 0, 0);
+
+        const diffTime = Math.abs(today - cDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (createdDateFilter === 'Last 7 Days') {
+          matchCreated = diffDays <= 7;
+        } else if (createdDateFilter === 'Last 30 Days') {
+          matchCreated = diffDays <= 30;
+        } else if (createdDateFilter === 'Last 90 Days') {
+          matchCreated = diffDays <= 90;
+        }
+      }
+
+      return matchSearch && matchStatus && matchSource && matchPriority && matchBudget && matchPropertyType && matchFollowUp && matchCreated;
     });
-  }, [leads, search, statusFilter, sourceFilter, budgetFilter]);
+  }, [leads, search, statusFilter, sourceFilter, priorityFilter, budgetFilter, propertyTypeFilter, followUpDateFilter, createdDateFilter]);
 
-  // Reset to page 1 on filter change
+  // Pagination totals
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const hasActiveFilters =
-    search || statusFilter !== 'All' || sourceFilter !== 'All' || budgetFilter !== 'All Budgets';
+    search.trim() !== '' ||
+    statusFilter !== 'All Statuses' ||
+    sourceFilter !== 'All Sources' ||
+    priorityFilter !== 'All Priorities' ||
+    budgetFilter !== 'All Budgets' ||
+    propertyTypeFilter !== 'All Types' ||
+    followUpDateFilter !== 'All Dates' ||
+    createdDateFilter !== 'All Time';
+
+  const hasActiveAdvancedFilters =
+    budgetFilter !== 'All Budgets' ||
+    propertyTypeFilter !== 'All Types' ||
+    followUpDateFilter !== 'All Dates' ||
+    createdDateFilter !== 'All Time';
+
+  const activeAdvancedCount =
+    (budgetFilter !== 'All Budgets' ? 1 : 0) +
+    (propertyTypeFilter !== 'All Types' ? 1 : 0) +
+    (followUpDateFilter !== 'All Dates' ? 1 : 0) +
+    (createdDateFilter !== 'All Time' ? 1 : 0);
 
   const clearFilters = () => {
+    setSearchInput('');
     setSearch('');
-    setStatusFilter('All');
-    setSourceFilter('All');
+    setStatusFilter('All Statuses');
+    setSourceFilter('All Sources');
+    setPriorityFilter('All Priorities');
     setBudgetFilter('All Budgets');
+    setPropertyTypeFilter('All Types');
+    setFollowUpDateFilter('All Dates');
+    setCreatedDateFilter('All Time');
     setPage(1);
   };
+
+  // Active filter tags row
+  const activeChips = useMemo(() => {
+    const chips = [];
+    if (search.trim()) {
+      chips.push({ key: 'search', label: `Search: "${search}"`, onRemove: () => { setSearchInput(''); setSearch(''); } });
+    }
+    if (statusFilter !== 'All Statuses') {
+      chips.push({ key: 'status', label: `Status: ${statusFilter}`, onRemove: () => setStatusFilter('All Statuses') });
+    }
+    if (sourceFilter !== 'All Sources') {
+      chips.push({ key: 'source', label: `Source: ${sourceFilter}`, onRemove: () => setSourceFilter('All Sources') });
+    }
+    if (priorityFilter !== 'All Priorities') {
+      chips.push({ key: 'priority', label: `Priority: ${priorityFilter}`, onRemove: () => setPriorityFilter('All Priorities') });
+    }
+    if (budgetFilter !== 'All Budgets') {
+      chips.push({ key: 'budget', label: `Budget: ${budgetFilter}`, onRemove: () => setBudgetFilter('All Budgets') });
+    }
+    if (propertyTypeFilter !== 'All Types') {
+      chips.push({ key: 'propertyType', label: `Property: ${propertyTypeFilter}`, onRemove: () => setPropertyTypeFilter('All Types') });
+    }
+    if (followUpDateFilter !== 'All Dates') {
+      chips.push({ key: 'followUpDate', label: `Follow-Up: ${followUpDateFilter}`, onRemove: () => setFollowUpDateFilter('All Dates') });
+    }
+    if (createdDateFilter !== 'All Time') {
+      chips.push({ key: 'createdDate', label: `Created: ${createdDateFilter}`, onRemove: () => setCreatedDateFilter('All Time') });
+    }
+    return chips;
+  }, [search, statusFilter, sourceFilter, priorityFilter, budgetFilter, propertyTypeFilter, followUpDateFilter, createdDateFilter]);
 
   // Summary counts
   const counts = useMemo(() => ({
@@ -316,28 +533,29 @@ const Leads = () => {
 
       {/* ── Search + Filters ─────────────────────────────────────────── */}
       <section
-        className="bg-[#151517] border border-[#2A2A2D] rounded-xl p-4 space-y-3 animate-fadeInUp"
+        className="bg-[#151517] border border-[#2A2A2D] rounded-xl p-4 space-y-4 shadow-lg animate-fadeInUp"
         style={{ animationDelay: '120ms' }}
       >
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
+        {/* Main Controls Row */}
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* Debounced Search */}
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A5D] pointer-events-none" />
             <input
               id="leads-search"
               type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search by name, email, or phone..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by customer name, email, phone, or property interest..."
               aria-label="Search leads"
               className="w-full h-9 pl-9 pr-9 rounded-lg bg-[#1E1E21] border border-[#2A2A2D]
-                text-sm text-[#F5F5F5] placeholder-[#4A4A4D]
-                focus:outline-none focus:border-[#C6FF00]/60 focus:ring-2 focus:ring-[#C6FF00]/10
-                hover:border-[#3A3A3D] transition-colors duration-150"
+                text-xs text-[#F5F5F5] placeholder-[#4A4A4D] outline-none
+                focus:border-[#C6FF00]/60 focus:ring-2 focus:ring-[#C6FF00]/10
+                hover:border-[#3A3A3D] transition-all duration-150"
             />
-            {search && (
+            {searchInput && (
               <button
-                onClick={() => { setSearch(''); setPage(1); }}
+                onClick={() => setSearchInput('')}
                 aria-label="Clear search"
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5A5A5D] hover:text-[#A0A0A0] transition-colors"
               >
@@ -346,33 +564,59 @@ const Leads = () => {
             )}
           </div>
 
-          {/* Filter toggle (mobile) */}
-          <button
-            onClick={() => setFiltersOpen(o => !o)}
-            className="sm:hidden flex items-center gap-2 h-9 px-3 rounded-lg border border-[#2A2A2D] text-[#A0A0A0] text-sm
-              hover:border-[#3A3A3D] hover:text-[#F5F5F5] hover:bg-[#1E1E21] transition-all duration-150"
-          >
-            <SlidersHorizontal size={15} />
-            Filters
-            {hasActiveFilters && (
-              <span className="w-2 h-2 rounded-full bg-[#C6FF00]" />
-            )}
-          </button>
+          {/* Quick Filters Row */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <PremiumFilterSelect
+              id="status-filter"
+              label="Status Filter"
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v); setPage(1); }}
+              options={STATUS_OPTIONS_DISPLAY}
+              icon={Briefcase}
+            />
+            <PremiumFilterSelect
+              id="source-filter"
+              label="Source Filter"
+              value={sourceFilter}
+              onChange={(v) => { setSourceFilter(v); setPage(1); }}
+              options={SOURCE_OPTIONS_DISPLAY}
+              icon={Filter}
+            />
+            <PremiumFilterSelect
+              id="priority-filter"
+              label="Priority Filter"
+              value={priorityFilter}
+              onChange={(v) => { setPriorityFilter(v); setPage(1); }}
+              options={PRIORITY_OPTIONS_DISPLAY}
+              icon={Flag}
+            />
 
-          {/* Desktop filters row */}
-          <div className="hidden sm:flex gap-2 flex-wrap">
-            <FilterSelect id="status-filter" label="Status" value={statusFilter}
-              onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} />
-            <FilterSelect id="source-filter" label="Source" value={sourceFilter}
-              onChange={(v) => { setSourceFilter(v); setPage(1); }} options={SOURCE_OPTIONS} />
-            <FilterSelect id="budget-filter" label="Budget" value={budgetFilter}
-              onChange={(v) => { setBudgetFilter(v); setPage(1); }} options={BUDGET_OPTIONS} />
+            {/* Advanced Filters Trigger */}
+            <button
+              onClick={() => setAdvancedOpen(!advancedOpen)}
+              aria-expanded={advancedOpen}
+              aria-controls="advanced-filters-panel"
+              className={`flex items-center gap-2 h-9 px-3.5 rounded-lg border text-xs font-bold transition-all duration-150 outline-none focus:ring-2 focus:ring-[#C6FF00]/40
+                ${advancedOpen || hasActiveAdvancedFilters
+                  ? 'border-[#C6FF00]/40 text-[#C6FF00] bg-[#C6FF00]/5'
+                  : 'border-[#2A2A2D] text-[#A0A0A0] hover:border-[#3A3A3D] hover:text-[#F5F5F5] hover:bg-[#1E1E21]'}`}
+            >
+              <SlidersHorizontal size={13} />
+              <span>Advanced Filters</span>
+              {activeAdvancedCount > 0 && (
+                <span className="flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold rounded-full bg-[#C6FF00] text-[#0B0B0D]">
+                  {activeAdvancedCount}
+                </span>
+              )}
+              {advancedOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
 
+            {/* Clear All Filters button */}
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-[#2A2A2D] text-[#A0A0A0] text-sm
-                  hover:border-red-500/40 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
+                className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-red-500/20 text-red-400 text-xs font-semibold
+                  hover:border-red-500/40 hover:bg-red-500/5 transition-all duration-150 outline-none"
               >
                 <X size={13} /> Clear
               </button>
@@ -380,30 +624,96 @@ const Leads = () => {
           </div>
         </div>
 
-        {/* Mobile filters panel */}
-        {filtersOpen && (
-          <div className="sm:hidden flex flex-col gap-2 pt-2 border-t border-[#2A2A2D]">
-            <FilterSelect id="status-filter-m" label="Status" value={statusFilter}
-              onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} />
-            <FilterSelect id="source-filter-m" label="Source" value={sourceFilter}
-              onChange={(v) => { setSourceFilter(v); setPage(1); }} options={SOURCE_OPTIONS} />
-            <FilterSelect id="budget-filter-m" label="Budget" value={budgetFilter}
-              onChange={(v) => { setBudgetFilter(v); setPage(1); }} options={BUDGET_OPTIONS} />
-            {hasActiveFilters && (
-              <button onClick={clearFilters}
-                className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-[#2A2A2D] text-red-400 text-sm w-fit
-                  hover:bg-red-500/10 transition-all duration-150">
-                <X size={13} /> Clear all filters
-              </button>
-            )}
+        {/* Collapsible Advanced Filters Panel */}
+        <div
+          id="advanced-filters-panel"
+          className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 overflow-hidden transition-all duration-300
+            ${advancedOpen ? 'max-h-[300px] pt-3 border-t border-[#2A2A2D]/40 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}
+        >
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] text-[#5A5A5D] uppercase font-bold pl-0.5">Budget Range</span>
+            <PremiumFilterSelect
+              id="budget-filter"
+              label="Budget Filter"
+              value={budgetFilter}
+              onChange={(v) => { setBudgetFilter(v); setPage(1); }}
+              options={BUDGET_OPTIONS_DETAILED.map(b => b.label)}
+              icon={DollarSign}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] text-[#5A5A5D] uppercase font-bold pl-0.5">Property Type</span>
+            <PremiumFilterSelect
+              id="property-type-filter"
+              label="Property Type Filter"
+              value={propertyTypeFilter}
+              onChange={(v) => { setPropertyTypeFilter(v); setPage(1); }}
+              options={PROPERTY_TYPE_OPTIONS}
+              icon={Home}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] text-[#5A5A5D] uppercase font-bold pl-0.5">Follow-Up Date</span>
+            <PremiumFilterSelect
+              id="followup-date-filter"
+              label="Follow-Up Date Filter"
+              value={followUpDateFilter}
+              onChange={(v) => { setFollowUpDateFilter(v); setPage(1); }}
+              options={FOLLOW_UP_DATE_OPTIONS}
+              icon={Calendar}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] text-[#5A5A5D] uppercase font-bold pl-0.5">Created Date</span>
+            <PremiumFilterSelect
+              id="created-date-filter"
+              label="Created Date Filter"
+              value={createdDateFilter}
+              onChange={(v) => { setCreatedDateFilter(v); setPage(1); }}
+              options={CREATED_DATE_OPTIONS}
+              icon={Sparkles}
+            />
+          </div>
+        </div>
+
+        {/* Active Filter Chips / Tags */}
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#2A2A2D]/30 animate-fadeIn">
+            <span className="text-[9px] uppercase font-bold text-[#5A5A5D] tracking-wider pr-1">Applied:</span>
+            {activeChips.map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#1E1E21] border border-[#2A2A2D] text-[#F5F5F5] hover:border-[#3A3A3D] transition-colors"
+              >
+                <span>{chip.label}</span>
+                <button
+                  onClick={chip.onRemove}
+                  aria-label={`Remove filter ${chip.label}`}
+                  className="text-[#5A5A5D] hover:text-red-400 transition-colors flex-shrink-0"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            <button
+              onClick={clearFilters}
+              className="text-[11px] font-bold text-red-400 hover:text-red-300 transition-colors pl-1"
+            >
+              Clear All
+            </button>
           </div>
         )}
 
-        {/* Result count */}
-        <p className="text-[#5A5A5D] text-xs">
-          Showing <span className="text-[#A0A0A0] font-medium">{filtered.length}</span> of{' '}
-          <span className="text-[#A0A0A0] font-medium">{leads.length}</span> leads
-        </p>
+        {/* Results Summary count */}
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-[#5A5A5D] text-xs">
+            Showing <span className="text-[#A0A0A0] font-bold">{filtered.length}</span> of{' '}
+            <span className="text-[#A0A0A0] font-bold">{leads.length}</span> leads
+          </p>
+        </div>
       </section>
 
       {/* ── Table (desktop) / Cards (mobile) ─────────────────────────── */}
@@ -414,7 +724,11 @@ const Leads = () => {
       >
         {paginated.length === 0 ? (
           <div className="bg-[#151517] border border-[#2A2A2D] rounded-xl">
-            <EmptyState onAdd={() => navigate('/leads/new')} />
+            <EmptyState 
+              onAdd={() => navigate('/leads/new')} 
+              onClear={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
           </div>
         ) : (
           <>
