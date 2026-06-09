@@ -1,0 +1,16 @@
+-- Database: real_estate_crm
+-- TODO: Write CREATE DATABASE real_estate_crm statement;
+
+-- Table: leads
+-- TODO: Write CREATE TABLE leads schema;
+-- The table should contain fields such as:
+--   - id (INT AUTO_INCREMENT PRIMARY KEY)
+--   - name (VARCHAR)
+--   - email (VARCHAR)
+--   - phone (VARCHAR)
+--   - status (VARCHAR/ENUM - e.g., New, Contacted, Qualified, Lost, Won)
+--   - source (VARCHAR - e.g., Website, Referral, Advertisement)
+--   - price_range (VARCHAR/DECIMAL)
+--   - notes (TEXT)
+--   - created_at (TIMESTAMP)
+--   - updated_at (TIMESTAMP)
