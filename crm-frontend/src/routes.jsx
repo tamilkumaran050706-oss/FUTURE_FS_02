@@ -6,6 +6,8 @@ import Leads from './pages/Leads';
 import AddLead from './pages/AddLead';
 import EditLead from './pages/EditLead';
 import LeadDetails from './pages/LeadDetails';
+import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 
 const AppRoutes = () => {
@@ -15,8 +17,11 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
         <Route path="leads" element={<Leads />} />
         <Route path="leads/add" element={<AddLead />} />
+        <Route path="leads/new" element={<AddLead />} />
         <Route path="leads/edit/:id" element={<EditLead />} />
         <Route path="leads/:id" element={<LeadDetails />} />
+        <Route path="analytics" element={<Analytics />} />
+        <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
