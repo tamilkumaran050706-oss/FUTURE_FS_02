@@ -1,60 +1,58 @@
-// TODO: Import leadService
+const leadService = require('../services/leadService');
+const { successResponse, errorResponse } = require('../utils/responseHandler');
 
-// @desc    Get all leads
-// @route   GET /api/leads
-// @access  Public
 const getAllLeads = async (req, res, next) => {
   try {
-    // TODO: Implement getting all leads
-    res.status(200).json({ message: 'GET /api/leads - TODO' });
+    const result = await leadService.getAllLeads(req.query);
+    return successResponse(res, 200, result, 'Leads fetched successfully');
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get single lead by ID
-// @route   GET /api/leads/:id
-// @access  Public
 const getLeadById = async (req, res, next) => {
   try {
-    // TODO: Implement getting lead by ID
-    res.status(200).json({ message: `GET /api/leads/${req.params.id} - TODO` });
+    const lead = await leadService.getLeadById(req.params.id);
+    if (!lead) {
+      return errorResponse(res, 404, 'Lead not found');
+    }
+
+    return successResponse(res, 200, lead, 'Lead fetched successfully');
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Create new lead
-// @route   POST /api/leads
-// @access  Public
 const createLead = async (req, res, next) => {
   try {
-    // TODO: Implement creating a new lead
-    res.status(201).json({ message: 'POST /api/leads - TODO' });
+    const lead = await leadService.createLead(req.body);
+    return successResponse(res, 201, lead, 'Lead created successfully');
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Update lead
-// @route   PUT /api/leads/:id
-// @access  Public
 const updateLead = async (req, res, next) => {
   try {
-    // TODO: Implement updating a lead
-    res.status(200).json({ message: `PUT /api/leads/${req.params.id} - TODO` });
+    const lead = await leadService.updateLead(req.params.id, req.body);
+    if (!lead) {
+      return errorResponse(res, 404, 'Lead not found');
+    }
+
+    return successResponse(res, 200, lead, 'Lead updated successfully');
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Delete lead
-// @route   DELETE /api/leads/:id
-// @access  Public
 const deleteLead = async (req, res, next) => {
   try {
-    // TODO: Implement deleting a lead
-    res.status(200).json({ message: `DELETE /api/leads/${req.params.id} - TODO` });
+    const deleted = await leadService.deleteLead(req.params.id);
+    if (!deleted) {
+      return errorResponse(res, 404, 'Lead not found');
+    }
+
+    return successResponse(res, 200, {}, 'Lead deleted successfully');
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, BarChart3, Settings, Github, Heart } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Settings, Heart } from 'lucide-react';
 
 const Footer = () => {
   const navigate = useNavigate();

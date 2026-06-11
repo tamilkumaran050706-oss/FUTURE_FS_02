@@ -5,20 +5,25 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
 app.use('/api/leads', leadRoutes);
 
-// Root Endpoint
 app.get('/', (req, res) => {
-  res.json({ message: 'Real Estate Lead Management CRM API' });
+  res.json({
+    success: true,
+    message: 'Real Estate Lead Management CRM API',
+    data: {},
+  });
 });
 
-// Error Handler
+app.use((req, res, next) => {
+  res.status(404);
+  next(new Error('Route not found'));
+});
+
 app.use(errorHandler);
 
 module.exports = app;

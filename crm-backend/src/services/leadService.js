@@ -1,28 +1,23 @@
-// TODO: Import leadModel
+const Lead = require('../models/leadModel');
 
-const getAllLeads = async () => {
-  // TODO: Add business logic for fetching all leads
-  return [];
+const getAllLeads = async (query) => {
+  return Lead.findAll(query);
 };
 
 const getLeadById = async (id) => {
-  // TODO: Add business logic for fetching lead by ID
-  return null;
+  return Lead.findById(id);
 };
 
 const createLead = async (leadData) => {
-  // TODO: Add business logic for creating a lead
-  return null;
+  return Lead.create(leadData);
 };
 
 const updateLead = async (id, leadData) => {
-  // TODO: Add business logic for updating a lead
-  return null;
+  return Lead.update(id, leadData);
 };
 
 const deleteLead = async (id) => {
-  // TODO: Add business logic for deleting a lead
-  return null;
+  return Lead.delete(id);
 };
 
 module.exports = {

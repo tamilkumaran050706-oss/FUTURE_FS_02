@@ -1,15 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const leadController = require('../controllers/leadController');
-// TODO: Import validation middleware
+const { validateRequest } = require('../middleware/validationMiddleware');
+const {
+  createLeadSchema,
+  updateLeadSchema,
+  idParamSchema,
+} = require('../validators/leadValidator');
 
 router.route('/')
   .get(leadController.getAllLeads)
-  .post(leadController.createLead);
+  .post(validateRequest(createLeadSchema), leadController.createLead);
 
 router.route('/:id')
-  .get(leadController.getLeadById)
-  .put(leadController.updateLead)
-  .delete(leadController.deleteLead);
+  .get(validateRequest(idParamSchema), leadController.getLeadById)
+  .put(validateRequest([...idParamSchema, ...updateLeadSchema]), leadController.updateLead)
+  .delete(validateRequest(idParamSchema), leadController.deleteLead);
 
 module.exports = router;
